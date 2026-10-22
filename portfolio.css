@@ -1,0 +1,6 @@
+.project-picture--drawing{background:#e3e9e6}
+.project-picture--drawing img{object-fit:contain;filter:none}
+.project-picture--drawing:hover img{transform:none}
+.dialog-image--drawing{object-fit:contain;background:#e3e9e6}
+#dialog-source{display:block;width:fit-content;margin-top:12px;border-bottom:1px solid currentColor;font-size:12px;color:var(--ink)}
+#dialog-source:hover{color:var(--orange)}
