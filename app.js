@@ -39,6 +39,8 @@
   window.matchMedia('(min-width: 981px)').addEventListener('change', closeMenu);
 
   const cards = projects.map(project => {
+    const existing = grid.querySelector(`[data-project-id="${project.id}"]`);
+    if (existing) return { card: existing, project };
     const card = element('article', 'project-card' + (project.drawing ? ' is-drawing' : ''));
     card.dataset.type = project.type;
     const button = element('button', 'project-open');
@@ -56,7 +58,9 @@
     const meta = element('div', 'project-card-meta');
     meta.append(element('span', 'mono', project.code), element('h3', '', project.title));
     button.append(media, meta, element('p', '', project.summary));
-    card.append(button); grid.append(card);
+    const detail = element('a', 'project-detail-link', 'Описание и материалы проекта →');
+    detail.href = `/proekty/${encodeURIComponent(project.id)}/`;
+    card.append(button, detail); grid.append(card);
     return { card, project };
   });
   $('#project-total').textContent = String(projects.length).padStart(2, '0');
@@ -134,6 +138,7 @@
     if (!project) return;
     currentProject = project; opener = trigger;
     $('#dialog-title').textContent = project.title;
+    $('#dialog-detail').href = `/proekty/${encodeURIComponent(project.id)}/`;
     $('#dialog-code').textContent = project.code + ' / ' + project.category;
     $('#dialog-description').textContent = project.description;
     $('#dialog-source').textContent = 'МАТЕРИАЛЫ: ' + project.source;
