@@ -1,0 +1,23 @@
+/* Approved design: original emblem, charcoal / white / yellow. */
+.site-header{border-bottom:3px solid var(--orange);background:#fff}
+.site-header .header-inner{min-height:130px;gap:28px}
+.brand--emblem{width:clamp(280px,30vw,430px);max-width:calc(100% - 60px)}
+.brand-emblem-frame{display:block;position:relative;width:100%;aspect-ratio:4.37;overflow:hidden;background:#fff}
+.brand-emblem-frame img{position:absolute;top:50%;left:50%;width:100.6%;max-width:none;height:auto;transform:translate(-50%,-48.5%)}
+.hero h1 span{color:var(--ink);background:linear-gradient(transparent 83%,var(--orange) 83%,var(--orange) 94%,transparent 94%)}
+.hero-intro .text-link{background:var(--orange);color:var(--ink);padding:12px 18px;border:0;gap:36px}
+.status-dot{border-radius:0;width:8px;height:8px;box-shadow:0 0 0 1px #b4a800}
+.hero-image-label,.hero-caption .mono{color:var(--orange)}
+.hero-overlay{background:linear-gradient(90deg,var(--ink),rgb(25 26 25 / .9) 24%,transparent 32%)}
+.hero-caption .circle-link{border-color:var(--orange);color:var(--orange)}
+.filter.active,.filter[aria-pressed="true"]{background:var(--orange);color:var(--ink)}
+.button-orange{color:var(--ink)}
+.project-open:focus-visible .project-arrow{color:var(--ink)}
+.contact-copy em{color:var(--ink);text-decoration:underline;text-decoration-color:var(--orange);text-decoration-thickness:5px;text-underline-offset:6px}
+::selection{background:var(--orange);color:var(--ink)}
+:where(a,button,input,select,textarea,summary):focus-visible{outline-color:#777100}
+.expertise-section :focus-visible,.site-footer :focus-visible{outline-color:var(--orange)}
+@media(hover:hover){.text-link:hover,.main-nav a:hover,.header-contact:hover{color:#625900}.button-orange:hover{background:#e4d100;color:var(--ink)}.project-open:hover .project-arrow{color:var(--ink)}.expertise-section .text-link:hover{color:var(--orange)}}
+@media(min-width:981px) and (max-width:1199px){.site-header .header-inner{gap:20px;min-height:112px}.site-header .main-nav{gap:19px}.site-header .header-contact{gap:15px}}
+@media(max-width:980px){.site-header .header-inner{min-height:110px}.brand--emblem{width:350px}.site-header .main-nav{max-height:calc(100dvh - 113px)}}
+@media(max-width:640px){.site-header .header-inner{min-height:94px;gap:16px}.brand--emblem{width:272px}.site-header .main-nav{max-height:calc(100dvh - 97px)}}
