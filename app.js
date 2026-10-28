@@ -182,25 +182,84 @@
       event.preventDefault(); showImage(imageIndex + (event.key === 'ArrowRight' ? 1 : -1));
     }
   });
+  const form = $('#brief');
+  const service = form.elements.service;
+  const message = form.elements.message;
+  const briefContext = $('#brief-context');
+  const serviceValues = new Set([
+    'help', 'proektirovanie-sudov', 'pereoborudovanie-sudov', 'modernizatsiya-sudov',
+    'plavuchie-restorany-i-gostinitsy', 'raschety-ostoychivosti-i-prochnosti',
+    'tekhnicheskoe-sostoyanie-sudov', 'avtorskiy-nadzor'
+  ]);
+  let briefProject = null;
+  let lastContextSearch = null;
+  let automaticService = service.value;
+  let automaticMessage = message.value;
+  let serviceEdited = service.value !== 'help';
+  let messageEdited = Boolean(message.value.trim());
+  const serviceTitle = () => service.selectedOptions[0]?.textContent.trim() || 'Нужна консультация';
+  const projectTitle = project => `${project.title} (${project.code})`;
+
+  function showBriefContext() {
+    if (!briefContext) return;
+    const parts = [];
+    if (service.value !== 'help') parts.push(serviceTitle());
+    if (briefProject) parts.push('Проект: ' + projectTitle(briefProject));
+    briefContext.textContent = parts.length ? 'Тема обращения: ' + parts.join(' · ') : '';
+    briefContext.hidden = !parts.length;
+  }
+  function applyProjectContext(project) {
+    briefProject = project;
+    if (message.value !== automaticMessage) messageEdited = true;
+    if (!messageEdited) {
+      automaticMessage = project
+        ? `Интересует задача, похожая на проект «${project.title}» (${project.code}).\n\nМоё судно и задача: `
+        : '';
+      message.value = automaticMessage;
+    }
+    showBriefContext();
+  }
+  function syncUrlContext() {
+    if (lastContextSearch === window.location.search) return;
+    lastContextSearch = window.location.search;
+    const params = new URLSearchParams(lastContextSearch);
+    const serviceValue = params.getAll('service').length === 1 ? params.get('service') : null;
+    const projectId = params.getAll('project').length === 1 ? params.get('project') : null;
+    if (service.value !== automaticService) serviceEdited = true;
+    if (!serviceEdited) {
+      automaticService = serviceValues.has(serviceValue) ? serviceValue : 'help';
+      service.value = automaticService;
+    }
+    applyProjectContext(projects.find(project => project.id === projectId) || null);
+  }
+  for (const type of ['input', 'change']) {
+    service.addEventListener(type, () => { serviceEdited = true; showBriefContext(); });
+    message.addEventListener(type, () => { messageEdited = true; });
+  }
+  for (const type of ['popstate', 'hashchange', 'pageshow']) {
+    window.addEventListener(type, syncUrlContext);
+  }
+  syncUrlContext();
+
   $('#dialog-contact').addEventListener('click', () => {
     dialog.close();
-    const message = $('#brief [name="message"]');
-    if (!message.value.trim()) message.value = `Интересует задача, похожая на проект «${currentProject.title}» (${currentProject.code}).\n\nМоё судно и задача: `;
+    applyProjectContext(currentProject);
     requestAnimationFrame(() => message.focus({ preventScroll: true }));
   });
-
-  const form = $('#brief');
   form.addEventListener('submit', event => {
     event.preventDefault();
     for (const name of ['name', 'email', 'message']) {
       const input = form.elements[name];
+      if (input === message && !messageEdited && input.value === automaticMessage) automaticMessage = input.value.trim();
       input.value = input.value.trim();
       if (!input.value) { input.reportValidity(); return; }
     }
     if (!form.reportValidity()) return;
     const data = new FormData(form);
-    const subject = 'Обращение в БКИ: ' + data.get('service');
-    const body = `Здравствуйте!\n\nИмя: ${data.get('name')}\nEmail: ${data.get('email')}\nНаправление: ${data.get('service')}\n\n${data.get('message')}`;
+    const direction = serviceTitle();
+    const project = briefProject ? projectTitle(briefProject) : '';
+    const subject = 'Обращение в БКИ: ' + direction + (project ? ' — ' + project : '');
+    const body = `Здравствуйте!\n\nИмя: ${data.get('name')}\nEmail: ${data.get('email')}\nНаправление: ${direction}${project ? '\nПроект: ' + project : ''}\n\n${data.get('message')}`;
     $('#letter-text').value = subject + '\n\n' + body;
     $('#letter-result').hidden = false;
     const mailUrl = 'mailto:bki-91@yandex.ru?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
