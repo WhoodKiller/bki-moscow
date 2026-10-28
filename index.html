@@ -2,6 +2,19 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <script>
+    (() => {
+      try {
+        if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
+        const url = new URL(location.href);
+        if (url.searchParams.get('utm_source') !== 'chatgpt.com') return;
+        url.searchParams.delete('utm_source');
+        history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+      } catch (_) {
+        // URL cleanup must not prevent the page from loading.
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Бюро корабельных инженеров. Проектирование, модернизация и переоборудование судов речного и смешанного плавания. Портфолио, чертежи и инженерная практика.">
   <meta name="theme-color" content="#132e38">
