@@ -189,7 +189,8 @@
   const serviceValues = new Set([
     'help', 'proektirovanie-sudov', 'pereoborudovanie-sudov', 'modernizatsiya-sudov',
     'plavuchie-restorany-i-gostinitsy', 'raschety-ostoychivosti-i-prochnosti',
-    'tekhnicheskoe-sostoyanie-sudov', 'avtorskiy-nadzor'
+    'tekhnicheskoe-sostoyanie-sudov', 'avtorskiy-nadzor',
+    'soglasovanie-dokumentatsii-rko', 'suda-zarubezhnoy-postroyki-rko'
   ]);
   let briefProject = null;
   let lastContextSearch = null;
