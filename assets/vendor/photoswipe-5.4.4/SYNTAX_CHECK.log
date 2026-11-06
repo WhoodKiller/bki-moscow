@@ -1,0 +1,9 @@
+Syntax-only checks; no browser or hardware tests.
+UTC: 2026-11-06T21:14:12.0542719Z
+node --check "D:\Сергей\Project\BKI\work\bki-gallery-performance-20261107\gallery-viewer.js" => exit 0
+node --check "D:\Сергей\Project\BKI\work\bki-gallery-performance-20261107\assets\vendor\photoswipe-5.4.4\photoswipe.esm.js" => exit 0
+node --check "D:\Сергей\Project\BKI\work\bki-gallery-performance-20261107\assets\vendor\photoswipe-5.4.4\photoswipe.esm.min.js" => exit 0
+CSS syntax parse PASS: D:\Сергей\Project\BKI\work\bki-gallery-performance-20261107\gallery-viewer.css
+CSS syntax parse PASS: D:\Сергей\Project\BKI\work\bki-gallery-performance-20261107\assets\vendor\photoswipe-5.4.4\photoswipe.css
+Final adapter cleanup revision: node --check PASS, UTC 2026-11-06T21:14:56.0522785Z
+Compact footer / viewport revision: node --check gallery-viewer.js PASS; CSS syntax parse PASS; UTC 2026-11-06T21:17:02.083Z

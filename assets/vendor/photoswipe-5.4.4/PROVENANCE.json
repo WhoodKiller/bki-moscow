@@ -1,0 +1,37 @@
+{
+  "version": "5.4.4",
+  "license": "MIT",
+  "officialGitHubTag": "https://github.com/dimsemenov/PhotoSwipe/tree/v5.4.4",
+  "officialNpmTarball": "https://registry.npmjs.org/photoswipe/-/photoswipe-5.4.4.tgz",
+  "npmIntegrity": "sha512-WNFHoKrkZNnvFFhbHL93WDkW3ifwVOXSW3w1UuZZelSmgXpIGiZSNlZJq37rR8YejqME2rHs9EhH9ZvlvFH2NA==",
+  "npmIntegrityVerified": true,
+  "npmArchiveMembers": 82,
+  "allVendoredFilesMatchNpm": true,
+  "files": [
+    {
+      "file": "photoswipe.esm.js",
+      "bytes": 189114,
+      "sha256": "8fb6d883c58b0df716d6cb15268058c273e4e6d0b8d17f6ea85b3ce78e417748"
+    },
+    {
+      "file": "photoswipe.esm.min.js",
+      "bytes": 54270,
+      "sha256": "542069771beb34dc461cdb9374da8af643c591ebf65d8ec36331dd9a0681ebd4"
+    },
+    {
+      "file": "photoswipe.css",
+      "bytes": 7423,
+      "sha256": "b0eaaae0b9de064d25e2f18517b9011a526d9b2142376e1c0febd096cebab9f3"
+    },
+    {
+      "file": "LICENSE",
+      "bytes": 1129,
+      "sha256": "2c223af0b21d32240087ee189eb70fd315907b6ade8b561e24265baccd6a98e7"
+    },
+    {
+      "file": "package.json",
+      "bytes": 3041,
+      "sha256": "4e5cd2ba841de447e436813547fa3944c5abdfb6d16a82781580d66ca21bbe7d"
+    }
+  ]
+}

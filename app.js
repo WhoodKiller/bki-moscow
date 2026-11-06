@@ -50,7 +50,9 @@
     button.setAttribute('aria-label', 'Открыть проект: ' + project.title);
     const media = element('div', 'project-media');
     const img = element('img');
-    img.src = project.images[0].src;
+    img.src = project.images[0].displaySrc || project.images[0].src;
+    if (project.images[0].srcSet) img.srcset = project.images[0].srcSet;
+    img.sizes = '(max-width: 359px) calc(100vw - 34px), (max-width: 640px) calc(100vw - 42px), (max-width: 1368px) calc(46.8vw - 16px), 624px';
     img.alt = project.images[0].alt;
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -117,96 +119,13 @@
   galleryAPI.initCards(document, projects);
 
   const dialog = $('#project-dialog');
-  let dialogImage = $('#dialog-image');
+  const stage = $('.dialog-gallery');
   let currentProject = null;
   let opener = null;
-  const previous = $('#gallery-prev');
-  const next = $('#gallery-next');
-  const caption = $('#gallery-caption');
-  const photoCredit = element('p', 'photo-credit');
-  photoCredit.hidden = true;
-  caption.after(photoCredit);
-  const count = $('#gallery-count');
-  const originalImage = $('#gallery-original');
-  const stage = element('div', 'gallery-stage');
-  dialogImage.before(stage);
-  stage.append(dialogImage);
-  const galleryStatus = element('p', 'gallery-load-status');
-  galleryStatus.id = 'gallery-load-status';
-  galleryStatus.setAttribute('role', 'status');
-  galleryStatus.setAttribute('aria-live', 'polite');
-  galleryStatus.setAttribute('aria-atomic', 'true');
-  const retryImage = element('button', 'gallery-retry', 'Повторить загрузку');
-  retryImage.type = 'button';
-  retryImage.hidden = true;
-  stage.after(galleryStatus, retryImage);
-  count.removeAttribute('role');
-  const gallery = galleryAPI.createController({
-    isActive: () => dialog.open,
-    render(state) {
-      const ready = state.status === 'ready';
-      stage.dataset.galleryState = state.status;
-      stage.setAttribute('aria-busy', String(state.status === 'loading'));
-      if (state.status !== 'error' && document.activeElement === retryImage) {
-        (currentProject?.images.length > 1 ? $('#gallery-thumbs').children[state.requestedIndex] : $('.dialog-close'))?.focus({ preventScroll: true });
-      }
-      retryImage.hidden = state.status !== 'error';
-      originalImage.hidden = !ready;
-      if (ready) {
-        // Replace with the already decoded node; metadata changes in this same task.
-        const image = state.frame.image;
-        image.id = 'dialog-image';
-        image.alt = state.frame.alt;
-        image.draggable = false;
-        image.classList.toggle('is-drawing', Boolean(state.frame.drawing));
-        dialogImage.replaceWith(image);
-        dialogImage = image;
-        caption.textContent = state.frame.alt;
-        photoCredit.replaceChildren();
-        if (state.frame.sourceUrl && /^https?:\/\//.test(state.frame.sourceUrl)) {
-          const source = element('a', '', state.frame.credit || 'Источник фотографии');
-          source.href = state.frame.sourceUrl;
-          source.target = '_blank';
-          source.rel = 'noopener';
-          photoCredit.append(source);
-        } else if (state.frame.credit) photoCredit.textContent = state.frame.credit;
-        photoCredit.hidden = !state.frame.credit && !state.frame.sourceUrl;
-        originalImage.href = state.frame.src;
-        count.textContent = `${state.frame.index + 1} / ${state.total}`;
-        galleryStatus.textContent = `Изображение ${state.frame.index + 1} из ${state.total}: ${state.frame.alt}`;
-      } else {
-        dialogImage.style.visibility = 'hidden';
-        dialogImage.setAttribute('aria-hidden', 'true');
-        caption.textContent = '';
-        photoCredit.hidden = true;
-        photoCredit.replaceChildren();
-        count.textContent = '';
-        originalImage.removeAttribute('href');
-        galleryStatus.textContent = state.status === 'loading'
-          ? `Загрузка изображения ${state.requestedIndex + 1} из ${state.total}…`
-          : state.status === 'error' ? 'Не удалось загрузить изображение. Повторите попытку или выберите другое.' : '';
-      }
-      galleryStatus.classList.toggle('sr-only', ready);
-      const strip = $('#gallery-thumbs');
-      [...strip.children].forEach((thumb, index) => {
-        const active = ready && index === state.frame.index;
-        thumb.classList.toggle('is-active', active);
-        thumb.classList.toggle('is-loading', state.status === 'loading' && index === state.requestedIndex);
-        thumb.setAttribute('aria-pressed', String(active));
-        if (active) {
-          const left = thumb.offsetLeft;
-          const right = left + thumb.offsetWidth;
-          if (left < strip.scrollLeft) strip.scrollLeft = left;
-          else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth;
-        }
-      });
-    }
-  });
-  function showImage(index) {
-    if (dialog.open) return gallery.select(index);
-  }
+  let gallery = null;
   function closeProject() {
-    gallery.close();
+    gallery?.destroy();
+    gallery = null;
     dialog.close();
   }
   function openProject(id, trigger) {
@@ -225,40 +144,31 @@
       const row = element('div'); row.append(element('dt', '', label), element('dd', '', value)); facts.append(row);
     }
     facts.hidden = !facts.children.length;
-    const thumbs = $('#gallery-thumbs'); thumbs.replaceChildren();
-    project.images.forEach((picture, index) => {
-      // Numbered selectors do not download every full-resolution photo as a thumbnail.
-      const thumb = element('button', 'gallery-thumb gallery-thumb--number', String(index + 1));
-      thumb.type = 'button';
-      thumb.setAttribute('aria-label', `Изображение ${index + 1}: ${picture.alt}`);
-      thumb.setAttribute('aria-pressed', 'false');
-      thumb.addEventListener('click', () => showImage(index)); thumbs.append(thumb);
-    });
-    const single = project.images.length < 2;
-    thumbs.hidden = single; previous.hidden = single; next.hidden = single;
-    previous.disabled = single; next.disabled = single;
     document.body.classList.add('dialog-open');
     if (!dialog.open) dialog.showModal();
     dialog.scrollTop = 0;
-    gallery.open(project, startIndex);
+    gallery?.destroy();
+    gallery = galleryAPI.createCarousel(stage, {
+      images: project.images, title: project.title, initialIndex: startIndex, immediate: true,
+      sizes: '(max-width: 980px) calc(100vw - 52px), 600px',
+      onActivate: (index, trigger) => window.BKIViewer.open({
+        images: project.images, index, title: project.title, trigger,
+        onChange: index => gallery?.select(index, false)
+      })
+    });
   }
   document.addEventListener('click', event => {
     if (event.defaultPrevented) return;
     const trigger = event.target.closest('[data-project]');
     if (trigger) openProject(trigger.dataset.project, trigger);
   });
-  previous.addEventListener('click', () => gallery.step(-1));
-  next.addEventListener('click', () => gallery.step(1));
-  retryImage.addEventListener('click', () => gallery.retry());
-  galleryAPI.bindSwipe(stage, delta => {
-    if (dialog.open && currentProject?.images.length > 1) gallery.step(delta);
-  });
   $('.dialog-close').addEventListener('click', closeProject);
   dialog.addEventListener('cancel', event => { event.preventDefault(); closeProject(); });
   dialog.addEventListener('close', () => {
     // Native close is queued: an old close event must not invalidate a reopened dialog.
     if (dialog.open) return;
-    gallery.close();
+    gallery?.destroy();
+    gallery = null;
     document.body.classList.remove('dialog-open');
     if (opener?.isConnected) opener.focus({ preventScroll: true });
   });
