@@ -1,0 +1,99 @@
+/* Shared contact component. All component selectors are scoped. */
+body.bki-contact-open { overflow: hidden; }
+.bki-contact-dialog {
+  box-sizing: border-box; position: fixed; inset: auto;
+  top: calc(var(--bki-contact-top, 0px) + 12px); left: 50%; transform: translateX(-50%);
+  width: min(580px, calc(100% - 24px)); min-width: 0; max-width: none;
+  max-height: calc(var(--bki-contact-vh, 100dvh) - 24px);
+  margin: 0; padding: 0; border: 1px solid var(--line, #d8d8ce);
+  border-top: 5px solid var(--orange, #f3df00); background: var(--paper, #fafaf7);
+  color: var(--ink, #191a19); overflow: hidden; overscroll-behavior: contain;
+  overflow-wrap: anywhere; box-shadow: 0 20px 80px #0005;
+}
+.bki-contact-dialog[open] { display: flex; flex-direction: column; }
+.bki-contact-dialog::backdrop { background: rgb(15 18 18 / 70%); }
+/* Separate scroll area keeps the compact header visible without covering content.
+   Scoped selectors also win over the later ux-refresh.css global rules. */
+.bki-contact-dialog > .bki-contact-heading {
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 0; padding: 10px 24px;
+  border-bottom: 1px solid var(--line, #d8d8ce); background: var(--paper, #fafaf7);
+}
+.bki-contact-dialog > .bki-contact-body {
+  flex: 1 1 auto; min-height: 0; min-width: 0; padding: 20px 24px 24px;
+  overflow: auto; overscroll-behavior: contain; scroll-padding-block: 16px;
+}
+.bki-contact-heading > div { min-width: 0; }
+.bki-contact-dialog .bki-contact-heading h2 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -.025em; }
+.bki-contact-heading h2:focus { outline: none; }
+.bki-contact-close { flex: 0 0 44px; width: 44px; height: 44px; font-size: 30px; line-height: 1; background: var(--ink, #191a19); color: #fff; border: 1px solid transparent; }
+.bki-contact-dialog .bki-contact-note { font-size: 14px; line-height: 1.5; color: var(--muted, #62635b); }
+.bki-contact-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; min-width: 0; padding: 0; margin: 20px 0 16px; border: 0; }
+.bki-contact-fields label { margin-top: 11px; font-weight: 600; font-size: 15px; }
+.bki-contact-required { font-weight: 400; font-size: 13px; color: var(--muted, #62635b); }
+.bki-contact-dialog input, .bki-contact-dialog select, .bki-contact-dialog textarea {
+  display: block; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%;
+  min-height: 48px; padding: 11px 12px; border: 1px solid #8d8e86;
+  border-radius: 0; background: #fff; color: #191a19; font: inherit; font-size: 16px;
+}
+.bki-contact-dialog select { text-overflow: ellipsis; padding-right: 28px; }
+.bki-contact-dialog textarea { line-height: 1.5; resize: vertical; }
+.bki-contact-dialog [aria-invalid="true"] { border: 2px solid #a12c19; }
+.bki-contact-context { padding: 12px; margin-top: 16px; background: var(--wash, #efefe8); border-left: 3px solid var(--orange, #f3df00); font-size: 14px; }
+.bki-contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.bki-contact-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; max-width: 100%; padding: 13px 18px; border: 1px solid transparent;
+  background: var(--orange, #f3df00); color: var(--ink, #191a19);
+  font: inherit; font-size: 15px; font-weight: 600; line-height: 1.4; text-align: center;
+  white-space: normal; overflow-wrap: anywhere; cursor: pointer; text-decoration: none;
+}
+.bki-contact-secondary { background: transparent; border-color: #8d8e86; }
+.bki-contact-button:disabled { opacity: .6; cursor: wait; }
+.bki-contact-status { margin-top: 16px; font-size: 14px; line-height: 1.6; }
+.bki-contact-status:empty { display: none; }
+.bki-contact-status.is-error { color: #952914; }
+.bki-contact-result { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line, #d8d8ce); }
+.bki-contact-result h3 { font-size: 21px; margin-bottom: 8px; }
+.bki-contact-result label { display: block; margin-bottom: 8px; }
+.bki-contact-direct { display: flex; align-items: flex-start; flex-direction: column; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line, #d8d8ce); font-size: 14px; }
+.bki-contact-direct a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; }
+.bki-contact-sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.bki-contact-dialog :is(a, button, input, select, textarea):focus-visible,
+.bki-contact-page :is(a, button):focus-visible { outline: 3px solid #777100; outline-offset: 3px; }
+/* Static contacts page follows the existing header/footer and SEO templates. */
+.bki-contact-page { padding-bottom: 64px; }
+.bki-contact-page .inner-hero h1 { max-width: 100%; }
+.bki-contact-page .inner-lead { max-width: 740px; }
+.bki-contact-page-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; padding-top: 40px; }
+.bki-contact-page-card { min-width: 0; padding: 28px; background: #fff; border: 1px solid var(--line, #d8d8ce); border-top: 4px solid var(--orange, #f3df00); }
+.bki-contact-page-card h2 { font-size: clamp(25px, 3vw, 32px); line-height: 1.2; margin-bottom: 20px; }
+.bki-contact-page-card p, .bki-contact-page-card address { margin: 0 0 18px; }
+.bki-contact-page-card address { font-style: normal; }
+.bki-contact-page-links { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 24px; }
+.bki-contact-page-links a { display: inline-flex; align-items: center; min-height: 48px; font-size: clamp(17px, 2.2vw, 24px); text-decoration: underline; overflow-wrap: anywhere; }
+.bki-contact-page-card .text-link { white-space: normal; overflow-wrap: anywhere; }
+.bki-contact-page-card .bki-contact-button { margin-top: 10px; }
+.bki-contact-page-note { color: var(--muted, #62635b); font-size: 15px; line-height: 1.7; }
+.bki-contact-page-next { padding-top: 36px; }
+.bki-contact-page-next h2 { font-size: 27px; margin-bottom: 14px; }
+.bki-contact-page-next p { max-width: 760px; line-height: 1.7; }
+.bki-contact-page-next a { text-decoration: underline; }
+.bki-contact-nojs { display: flex; flex-wrap: wrap; gap: 16px; padding-block: 20px; }
+.bki-contact-nojs a { min-height: 44px; text-decoration: underline; }
+.bki-contact-page-card .text-link { margin-bottom: 20px; }
+.bki-contact-page-card .bki-contact-button + p { margin-top: 16px; }
+@media (max-width: 640px) {
+  .bki-contact-dialog { top: calc(var(--bki-contact-top, 0px) + 8px); width: calc(100% - 16px); max-height: calc(var(--bki-contact-vh, 100dvh) - 16px); padding: 0; }
+  .bki-contact-dialog > .bki-contact-heading { padding: 8px 16px; }
+  .bki-contact-dialog > .bki-contact-body { padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .bki-contact-actions { flex-direction: column; }
+  .bki-contact-actions > * { width: 100%; }
+  .bki-contact-page-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 28px; }
+  .bki-contact-page-card { padding: 20px; }
+  .bki-contact-page-card .bki-contact-button { width: 100%; }
+}
+@media (forced-colors: active) {
+  .bki-contact-button, .bki-contact-close { border: 1px solid ButtonText; }
+  .bki-contact-status.is-error { color: CanvasText; }
+}

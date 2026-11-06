@@ -1,0 +1,38 @@
+/* Functional layout and states. Brand/layout refinements belong to ux-refresh.css. */
+.project-card[data-gallery-enhanced] > .project-open { height: auto; }
+.card-gallery { position: relative; min-width: 0; }
+.project-card .project-media img { object-fit: contain; }
+.project-card .project-open:hover .project-media img { transform: none; }
+.card-gallery-open { display: block; width: 100%; text-align: left; }
+.gallery-swipe-surface { touch-action: pan-y pinch-zoom; }
+.gallery-swipe-surface img { user-select: none; -webkit-user-drag: none; }
+.card-gallery-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.card-gallery-dots { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; min-width: 0; }
+.card-gallery-arrow, .card-gallery-dot { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; }
+.card-gallery-arrow { font-size: 24px; }
+.card-gallery-dot::before { content: ''; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; }
+.card-gallery-dot[aria-pressed='true']::before { background: currentColor; }
+.card-gallery-dot.is-loading::before { outline: 1px dashed currentColor; outline-offset: 3px; }
+.card-gallery-count { white-space: nowrap; padding-inline: 8px; }
+.card-gallery-status:not(.sr-only), .gallery-load-status { font-size: 13px; overflow-wrap: anywhere; }
+.card-gallery-retry, .gallery-retry { min-height: 44px; padding: 8px 12px; text-decoration: underline; }
+.gallery-stage { min-width: 0; }
+.gallery-load-status { margin-block: 8px; }
+.gallery-thumb--number { display: inline-grid; place-items: center; flex-basis: 44px; min-height: 44px; height: 44px; }
+.gallery-thumb--number.is-loading { outline: 1px dashed currentColor; outline-offset: -4px; }
+.photo-credit, .photo-source { font-size: 12px; line-height: 1.5; color: var(--muted, #58645e); overflow-wrap: anywhere; }
+.photo-credit { margin: 4px 0 12px; }
+.photo-source { display: block; margin-top: 6px; }
+.photo-credit a, a.photo-source { text-decoration: underline; text-underline-offset: 3px; }
+.photo-credit a:focus-visible, a.photo-source:focus-visible { outline: 2px solid var(--ink, #191a19); outline-offset: 3px; }
+.card-gallery button:focus-visible, .card-gallery-open:focus-visible { outline: 3px solid var(--ink, #191a19); outline-offset: -3px; }
+@media (max-width: 980px) {
+  .card-gallery-controls { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; padding: 4px 12px; }
+  .card-gallery-dots { display: none; }
+  .card-gallery-arrow:first-child { grid-column: 1; grid-row: 1; }
+  .card-gallery-arrow { grid-column: 3; grid-row: 1; }
+  .card-gallery-count { grid-column: 2; grid-row: 1; text-align: center; }
+}
+@media (forced-colors: active) {
+  .card-gallery-dot[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -4px; }
+}

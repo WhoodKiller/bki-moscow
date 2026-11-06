@@ -222,7 +222,7 @@ details[open] .service-number { color: #f3df00; }
 .gallery-caption { margin-top: 16px; color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .gallery-caption:empty { display: none; }
 .gallery-original { margin-top: 6px; font-size: 12px; font-weight: 400; }
-.gallery-thumbs { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; margin-top: 12px; padding: 6px 5px 14px; scrollbar-width: thin; scrollbar-color: var(--muted) var(--wash); }
+.gallery-thumbs { position: relative; display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; margin-top: 12px; padding: 6px 5px 14px; scrollbar-width: thin; scrollbar-color: var(--muted) var(--wash); }
 .gallery-thumb { flex: 0 0 80px; height: 58px; padding: 3px; border: 1px solid var(--line); background: var(--wash); }
 .gallery-thumb img { width: 100%; height: 100%; object-fit: contain; }
 .gallery-thumb.is-active, .gallery-thumb[aria-pressed="true"] { border: 2px solid var(--orange); padding: 2px; background: var(--paper); }

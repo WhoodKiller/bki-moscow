@@ -42,6 +42,7 @@
     const existing = grid.querySelector(`[data-project-id="${project.id}"]`);
     if (existing) return { card: existing, project };
     const card = element('article', 'project-card' + (project.drawing ? ' is-drawing' : ''));
+    card.dataset.projectId = project.id;
     card.dataset.type = project.type;
     const button = element('button', 'project-open');
     button.type = 'button';
@@ -94,7 +95,7 @@
     visibleLimit += 8;
     applyFilters();
     const firstNew = cards.find(({card}) => !card.hidden && !shown.has(card));
-    firstNew?.card.querySelector('button').focus({ preventScroll: true });
+    firstNew?.card.querySelector('.card-gallery-open, .project-open')?.focus({ preventScroll: true });
   });
   $('#reset-search').addEventListener('click', () => {
     search.value = '';
@@ -107,41 +108,118 @@
     visibleLimit = projects.length;
     applyFilters();
     $('#projects').scrollIntoView({ block: 'start' });
-    cards[0]?.card.querySelector('button').focus({ preventScroll: true });
+    cards[0]?.card.querySelector('.card-gallery-open, .project-open')?.focus({ preventScroll: true });
   });
   $('#view-all-projects').hidden = false;
   applyFilters();
 
+  const galleryAPI = window.BKIGallery;
+  galleryAPI.initCards(document, projects);
+
   const dialog = $('#project-dialog');
-  const dialogImage = $('#dialog-image');
+  let dialogImage = $('#dialog-image');
   let currentProject = null;
-  let imageIndex = 0;
   let opener = null;
   const previous = $('#gallery-prev');
   const next = $('#gallery-next');
+  const caption = $('#gallery-caption');
+  const photoCredit = element('p', 'photo-credit');
+  photoCredit.hidden = true;
+  caption.after(photoCredit);
+  const count = $('#gallery-count');
+  const originalImage = $('#gallery-original');
+  const stage = element('div', 'gallery-stage');
+  dialogImage.before(stage);
+  stage.append(dialogImage);
+  const galleryStatus = element('p', 'gallery-load-status');
+  galleryStatus.id = 'gallery-load-status';
+  galleryStatus.setAttribute('role', 'status');
+  galleryStatus.setAttribute('aria-live', 'polite');
+  galleryStatus.setAttribute('aria-atomic', 'true');
+  const retryImage = element('button', 'gallery-retry', 'Повторить загрузку');
+  retryImage.type = 'button';
+  retryImage.hidden = true;
+  stage.after(galleryStatus, retryImage);
+  count.removeAttribute('role');
+  const gallery = galleryAPI.createController({
+    isActive: () => dialog.open,
+    render(state) {
+      const ready = state.status === 'ready';
+      stage.dataset.galleryState = state.status;
+      stage.setAttribute('aria-busy', String(state.status === 'loading'));
+      if (state.status !== 'error' && document.activeElement === retryImage) {
+        (currentProject?.images.length > 1 ? $('#gallery-thumbs').children[state.requestedIndex] : $('.dialog-close'))?.focus({ preventScroll: true });
+      }
+      retryImage.hidden = state.status !== 'error';
+      originalImage.hidden = !ready;
+      if (ready) {
+        // Replace with the already decoded node; metadata changes in this same task.
+        const image = state.frame.image;
+        image.id = 'dialog-image';
+        image.alt = state.frame.alt;
+        image.draggable = false;
+        image.classList.toggle('is-drawing', Boolean(state.frame.drawing));
+        dialogImage.replaceWith(image);
+        dialogImage = image;
+        caption.textContent = state.frame.alt;
+        photoCredit.replaceChildren();
+        if (state.frame.sourceUrl && /^https?:\/\//.test(state.frame.sourceUrl)) {
+          const source = element('a', '', state.frame.credit || 'Источник фотографии');
+          source.href = state.frame.sourceUrl;
+          source.target = '_blank';
+          source.rel = 'noopener';
+          photoCredit.append(source);
+        } else if (state.frame.credit) photoCredit.textContent = state.frame.credit;
+        photoCredit.hidden = !state.frame.credit && !state.frame.sourceUrl;
+        originalImage.href = state.frame.src;
+        count.textContent = `${state.frame.index + 1} / ${state.total}`;
+        galleryStatus.textContent = `Изображение ${state.frame.index + 1} из ${state.total}: ${state.frame.alt}`;
+      } else {
+        dialogImage.style.visibility = 'hidden';
+        dialogImage.setAttribute('aria-hidden', 'true');
+        caption.textContent = '';
+        photoCredit.hidden = true;
+        photoCredit.replaceChildren();
+        count.textContent = '';
+        originalImage.removeAttribute('href');
+        galleryStatus.textContent = state.status === 'loading'
+          ? `Загрузка изображения ${state.requestedIndex + 1} из ${state.total}…`
+          : state.status === 'error' ? 'Не удалось загрузить изображение. Повторите попытку или выберите другое.' : '';
+      }
+      galleryStatus.classList.toggle('sr-only', ready);
+      const strip = $('#gallery-thumbs');
+      [...strip.children].forEach((thumb, index) => {
+        const active = ready && index === state.frame.index;
+        thumb.classList.toggle('is-active', active);
+        thumb.classList.toggle('is-loading', state.status === 'loading' && index === state.requestedIndex);
+        thumb.setAttribute('aria-pressed', String(active));
+        if (active) {
+          const left = thumb.offsetLeft;
+          const right = left + thumb.offsetWidth;
+          if (left < strip.scrollLeft) strip.scrollLeft = left;
+          else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth;
+        }
+      });
+    }
+  });
   function showImage(index) {
-    imageIndex = (index + currentProject.images.length) % currentProject.images.length;
-    const picture = currentProject.images[imageIndex];
-    dialogImage.src = picture.src;
-    dialogImage.alt = picture.alt;
-    $('#gallery-caption').textContent = picture.alt;
-    $('#gallery-original').href = picture.src;
-    dialogImage.classList.toggle('is-drawing', Boolean(picture.drawing));
-    $('#gallery-count').textContent = `${imageIndex + 1} / ${currentProject.images.length}`;
-    [...$('#gallery-thumbs').children].forEach((thumb, i) => {
-      thumb.classList.toggle('is-active', i === imageIndex);
-      thumb.setAttribute('aria-pressed', String(i === imageIndex));
-    });
+    if (dialog.open) return gallery.select(index);
+  }
+  function closeProject() {
+    gallery.close();
+    dialog.close();
   }
   function openProject(id, trigger) {
     const project = projects.find(item => item.id === id);
-    if (!project) return;
+    if (!project?.images?.length) return;
+    const displayedIndex = Number(trigger?.dataset?.imageIndex);
+    const startIndex = Number.isInteger(displayedIndex) && displayedIndex >= 0 && displayedIndex < project.images.length ? displayedIndex : 0;
     currentProject = project; opener = trigger;
     $('#dialog-title').textContent = project.title;
     $('#dialog-detail').href = `/proekty/${encodeURIComponent(project.id)}/`;
     $('#dialog-code').textContent = project.code + ' / ' + project.category;
     $('#dialog-description').textContent = project.description;
-    $('#dialog-source').textContent = 'МАТЕРИАЛЫ: ' + project.source;
+    $('#dialog-source').textContent = 'ПРОЕКТНЫЕ ДАННЫЕ: ' + project.source;
     const facts = $('#dialog-facts'); facts.replaceChildren();
     for (const [label, value] of project.facts || []) {
       const row = element('div'); row.append(element('dt', '', label), element('dd', '', value)); facts.append(row);
@@ -149,137 +227,68 @@
     facts.hidden = !facts.children.length;
     const thumbs = $('#gallery-thumbs'); thumbs.replaceChildren();
     project.images.forEach((picture, index) => {
-      const thumb = element('button', 'gallery-thumb');
+      // Numbered selectors do not download every full-resolution photo as a thumbnail.
+      const thumb = element('button', 'gallery-thumb gallery-thumb--number', String(index + 1));
       thumb.type = 'button';
       thumb.setAttribute('aria-label', `Изображение ${index + 1}: ${picture.alt}`);
-      const img = element('img'); img.src = picture.src; img.alt = ''; img.loading = 'lazy';
-      thumb.append(img); thumb.addEventListener('click', () => showImage(index)); thumbs.append(thumb);
+      thumb.setAttribute('aria-pressed', 'false');
+      thumb.addEventListener('click', () => showImage(index)); thumbs.append(thumb);
     });
     const single = project.images.length < 2;
-    thumbs.hidden = single; previous.disabled = single; next.disabled = single;
-    showImage(0);
+    thumbs.hidden = single; previous.hidden = single; next.hidden = single;
+    previous.disabled = single; next.disabled = single;
     document.body.classList.add('dialog-open');
-    dialog.showModal(); dialog.scrollTop = 0;
+    if (!dialog.open) dialog.showModal();
+    dialog.scrollTop = 0;
+    gallery.open(project, startIndex);
   }
   document.addEventListener('click', event => {
+    if (event.defaultPrevented) return;
     const trigger = event.target.closest('[data-project]');
     if (trigger) openProject(trigger.dataset.project, trigger);
   });
-  previous.addEventListener('click', () => showImage(imageIndex - 1));
-  next.addEventListener('click', () => showImage(imageIndex + 1));
-  $('.dialog-close').addEventListener('click', () => dialog.close());
+  previous.addEventListener('click', () => gallery.step(-1));
+  next.addEventListener('click', () => gallery.step(1));
+  retryImage.addEventListener('click', () => gallery.retry());
+  galleryAPI.bindSwipe(stage, delta => {
+    if (dialog.open && currentProject?.images.length > 1) gallery.step(delta);
+  });
+  $('.dialog-close').addEventListener('click', closeProject);
+  dialog.addEventListener('cancel', event => { event.preventDefault(); closeProject(); });
   dialog.addEventListener('close', () => {
+    // Native close is queued: an old close event must not invalidate a reopened dialog.
+    if (dialog.open) return;
+    gallery.close();
     document.body.classList.remove('dialog-open');
     if (opener?.isConnected) opener.focus({ preventScroll: true });
   });
   dialog.addEventListener('click', event => {
     if (event.target !== dialog) return;
     const box = dialog.getBoundingClientRect();
-    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeProject();
   });
   dialog.addEventListener('keydown', event => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault(); showImage(imageIndex + (event.key === 'ArrowRight' ? 1 : -1));
+    if (!dialog.open || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'Tab') {
+      const controls = [...dialog.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex], [contenteditable="true"]')].filter(control => {
+        if (control.tabIndex < 0 || control.matches(':disabled, [aria-disabled="true"]') || control.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+        const visibility = getComputedStyle(control).visibility;
+        return control.getClientRects().length > 0 && visibility !== 'hidden' && visibility !== 'collapse';
+      });
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      const active = document.activeElement;
+      if (!first || !controls.includes(active) || (event.shiftKey ? active === first : active === last)) {
+        event.preventDefault();
+        // Reveal the newly focused control inside the scrollable dialog.
+        (event.shiftKey ? last : first)?.focus();
+        if (!first) dialog.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (currentProject?.images.length > 1 && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault(); gallery.step(event.key === 'ArrowRight' ? 1 : -1);
     }
   });
-  const form = $('#brief');
-  const service = form.elements.service;
-  const message = form.elements.message;
-  const briefContext = $('#brief-context');
-  const serviceValues = new Set([
-    'help', 'proektirovanie-sudov', 'pereoborudovanie-sudov', 'modernizatsiya-sudov',
-    'plavuchie-restorany-i-gostinitsy', 'raschety-ostoychivosti-i-prochnosti',
-    'tekhnicheskoe-sostoyanie-sudov', 'avtorskiy-nadzor',
-    'soglasovanie-dokumentatsii-rko', 'suda-zarubezhnoy-postroyki-rko'
-  ]);
-  let briefProject = null;
-  let lastContextSearch = null;
-  let automaticService = service.value;
-  let automaticMessage = message.value;
-  let serviceEdited = service.value !== 'help';
-  let messageEdited = Boolean(message.value.trim());
-  const serviceTitle = () => service.selectedOptions[0]?.textContent.trim() || 'Нужна консультация';
-  const projectTitle = project => `${project.title} (${project.code})`;
-
-  function showBriefContext() {
-    if (!briefContext) return;
-    const parts = [];
-    if (service.value !== 'help') parts.push(serviceTitle());
-    if (briefProject) parts.push('Проект: ' + projectTitle(briefProject));
-    briefContext.textContent = parts.length ? 'Тема обращения: ' + parts.join(' · ') : '';
-    briefContext.hidden = !parts.length;
-  }
-  function applyProjectContext(project) {
-    briefProject = project;
-    if (message.value !== automaticMessage) messageEdited = true;
-    if (!messageEdited) {
-      automaticMessage = project
-        ? `Интересует задача, похожая на проект «${project.title}» (${project.code}).\n\nМоё судно и задача: `
-        : '';
-      message.value = automaticMessage;
-    }
-    showBriefContext();
-  }
-  function syncUrlContext() {
-    if (lastContextSearch === window.location.search) return;
-    lastContextSearch = window.location.search;
-    const params = new URLSearchParams(lastContextSearch);
-    const serviceValue = params.getAll('service').length === 1 ? params.get('service') : null;
-    const projectId = params.getAll('project').length === 1 ? params.get('project') : null;
-    if (service.value !== automaticService) serviceEdited = true;
-    if (!serviceEdited) {
-      automaticService = serviceValues.has(serviceValue) ? serviceValue : 'help';
-      service.value = automaticService;
-    }
-    applyProjectContext(projects.find(project => project.id === projectId) || null);
-  }
-  for (const type of ['input', 'change']) {
-    service.addEventListener(type, () => { serviceEdited = true; showBriefContext(); });
-    message.addEventListener(type, () => { messageEdited = true; });
-  }
-  for (const type of ['popstate', 'hashchange', 'pageshow']) {
-    window.addEventListener(type, syncUrlContext);
-  }
-  syncUrlContext();
-
-  $('#dialog-contact').addEventListener('click', () => {
-    dialog.close();
-    applyProjectContext(currentProject);
-    requestAnimationFrame(() => message.focus({ preventScroll: true }));
-  });
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-    for (const name of ['name', 'email', 'message']) {
-      const input = form.elements[name];
-      if (input === message && !messageEdited && input.value === automaticMessage) automaticMessage = input.value.trim();
-      input.value = input.value.trim();
-      if (!input.value) { input.reportValidity(); return; }
-    }
-    if (!form.reportValidity()) return;
-    const data = new FormData(form);
-    const direction = serviceTitle();
-    const project = briefProject ? projectTitle(briefProject) : '';
-    const subject = 'Обращение в БКИ: ' + direction + (project ? ' — ' + project : '');
-    const body = `Здравствуйте!\n\nИмя: ${data.get('name')}\nEmail: ${data.get('email')}\nНаправление: ${direction}${project ? '\nПроект: ' + project : ''}\n\n${data.get('message')}`;
-    $('#letter-text').value = subject + '\n\n' + body;
-    $('#letter-result').hidden = false;
-    const mailUrl = 'mailto:bki-91@yandex.ru?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-    const longLetter = mailUrl.length > 1800;
-    $('#open-mail').href = mailUrl;
-    $('#open-mail').hidden = longLetter;
-    $('#form-status').textContent = longLetter
-      ? 'Письмо получилось длинным. Чтобы почтовая программа не обрезала его, скопируйте текст и отправьте на bki-91@yandex.ru.'
-      : 'Письмо готово. Откройте почту или скопируйте текст и отправьте его на bki-91@yandex.ru.';
-    $(longLetter ? '#copy-letter' : '#open-mail').focus({ preventScroll: true });
-  });
-  $('#copy-letter').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText($('#letter-text').value);
-      $('#form-status').textContent = 'Текст скопирован. Вставьте его в письмо на bki-91@yandex.ru.';
-    } catch {
-      $('#letter-text').focus(); $('#letter-text').select();
-      $('#form-status').textContent = 'Текст выделен. Нажмите Ctrl+C или выберите «Копировать» в меню выделения.';
-    }
-  });
-  form.querySelector('fieldset').disabled = false;
 })();
