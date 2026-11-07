@@ -31,6 +31,10 @@
   });
   nav.addEventListener('click', event => { if (event.target.closest('a')) closeMenu(); });
   document.addEventListener('click', event => { if (!event.target.closest('.site-header')) closeMenu(); });
+  // Observe the destination: moving within the header must not hide a link before its click.
+  document.addEventListener('focusin', event => {
+    if (menu.getAttribute('aria-expanded') === 'true' && !event.target.closest('.site-header')) closeMenu();
+  });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && menu.getAttribute('aria-expanded') === 'true') {
       closeMenu(); menu.focus();

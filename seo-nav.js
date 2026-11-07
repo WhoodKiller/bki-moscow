@@ -17,6 +17,10 @@
   });
   nav.addEventListener('click', e => { if (e.target.closest('a')) close(); });
   document.addEventListener('click', e => { if (!e.target.closest('.site-header')) close(); });
+  // Observe the destination: moving within the header must not hide a link before its click.
+  document.addEventListener('focusin', e => {
+    if (menu.getAttribute('aria-expanded') === 'true' && !e.target.closest('.site-header')) close();
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && menu.getAttribute('aria-expanded') === 'true') { close(); menu.focus(); }
   });

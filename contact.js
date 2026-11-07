@@ -341,12 +341,30 @@
     conversion('contact_open');
   }
 
+  function isEmail(reply) {
+    const parts = reply.match(/^([^\s@]+)@([^\s@]+)$/);
+    if (!parts) return false;
+    const domain = parts[2];
+    // URL supplies the browser's IDN conversion, but URL syntax is not an email domain.
+    if (/[\/\\:?#%]/.test(domain)) return false;
+    try {
+      const hostname = new URL('https://' + domain + '/').hostname;
+      const labels = hostname.split('.');
+      return hostname.length <= 253 && labels.length > 1 && labels.every(label =>
+        /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label));
+    } catch {
+      return false;
+    }
+  }
+
   function validate() {
     fields.name.value = fields.name.value.trim();
     fields.contact.value = fields.contact.value.trim();
     const reply = fields.contact.value;
-    const phone = /^[+\d\s().-]+$/.test(reply) && /^\d{7,15}$/.test(reply.replace(/\D/g, ''));
-    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply);
+    const normalizedPhone = reply.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-');
+    const phone = /^[+\d\s().-]+$/.test(normalizedPhone) && /^\d{7,15}$/.test(normalizedPhone.replace(/\D/g, ''));
+    const email = isEmail(reply);
+    if (phone) fields.contact.value = normalizedPhone;
     fields.name.setCustomValidity(fields.name.value ? '' : 'Укажите ваше имя.');
     fields.contact.setCustomValidity(phone || email ? '' : 'Укажите один телефон (7–15 цифр) или email вида name@example.ru.');
     for (const field of [fields.name, fields.contact, fields.message]) {

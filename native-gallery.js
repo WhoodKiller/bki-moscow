@@ -13,6 +13,10 @@
   'use strict';
   const clampIndex = (i, n) => Math.max(0, Math.min(n - 1, Number.isFinite(i) ? Math.round(i) : 0));
   const nearestIndex = (left, width, n) => width > 0 ? clampIndex(left / width, n) : 0;
+  let captionSequence = 0;
+  const fragmentId = hash => {
+    try { return decodeURIComponent(hash.replace(/^#/, '')); } catch { return ''; }
+  };
   const assetURL = src => src && !/^(?:https?:|data:|\/)/.test(src) ? '/' + src : src;
   const make = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -61,7 +65,8 @@
     const progress = make('div', 'bki-gallery-progress'); progress.setAttribute('aria-hidden', 'true');
     progress.append(make('span')); progress.hidden = images.length < 2;
     const status = make('p', 'sr-only'); status.setAttribute('role', 'status'); status.setAttribute('aria-atomic', 'true');
-    const caption = make('p', 'bki-gallery-caption'), credit = make('p', 'photo-credit bki-gallery-credit');
+    const caption = make('figcaption', 'bki-gallery-caption'), credit = make('p', 'photo-credit bki-gallery-credit');
+    caption.id = 'bki-gallery-caption-' + (++captionSequence);
     const original = make('a', 'bki-gallery-original', 'Оригинал ↗'); original.target = '_blank'; original.rel = 'noopener';
     const footer = make('div', 'bki-gallery-footer'); footer.append(credit, original);
     const thumbs = make('div', 'bki-gallery-thumbs'); thumbs.setAttribute('aria-label', 'Выбрать фотографию');
@@ -69,12 +74,14 @@
     const thumbButtons = [];
     const slides = images.map((picture, index) => {
       const slide = make('div', 'bki-slide'); slide.setAttribute('role', 'group');
+      if (!card && picture.id) slide.id = picture.id;
       slide.setAttribute('aria-roledescription', 'слайд'); slide.setAttribute('aria-label', `${index + 1} из ${images.length}`);
       const open = href ? make('a', 'bki-slide-open card-gallery-open') : button('bki-slide-open' + (card ? ' card-gallery-open' : ''));
       if (href) open.href = href;
       if (projectId) open.dataset.project = projectId;
       open.dataset.imageIndex = String(index);
       open.setAttribute('aria-label', card ? 'Смотреть фотографии: ' + title : `Увеличить фото ${index + 1}: ${picture.alt}`);
+      if (!card) open.setAttribute('aria-describedby', caption.id);
       const image = index === 0 && existingImage ? existingImage : make('img');
       image.alt = picture.alt || title; image.width = picture.width || image.width || 1000;
       image.height = picture.height || image.height || 625; image.decoding = 'async'; image.draggable = false;
@@ -117,8 +124,13 @@
       }
       return state;
     });
-    host.replaceChildren(viewport, progress, bar, status);
-    if (!card) host.append(thumbs, caption, footer);
+    if (card) host.replaceChildren(viewport, progress, bar, status);
+    else {
+      // Keep a real figure/figcaption relationship, outside the clipped image rail.
+      const frame = make('figure', 'bki-gallery-frame');
+      frame.append(viewport, progress, bar, status, thumbs, caption);
+      host.replaceChildren(frame, footer);
+    }
     function ensure(index, neighbour = false) {
       const item = slides[index]; if (!item || destroyed || item.started) return;
       item.cancelTimer(); const attempt = ++item.attempt;
@@ -140,7 +152,8 @@
     }
     function update(index, notify = true) {
       const oldIndex = current;
-      const focusFollows = oldIndex !== index && slides[oldIndex]?.slide.contains(document.activeElement);
+      const focusFollows = oldIndex !== index &&
+        (slides[oldIndex]?.slide.contains(document.activeElement) || caption.contains(document.activeElement));
       current = clampIndex(index, images.length); const picture = images[current];
       counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(images.length).padStart(2, '0')}`;
       previous.disabled = current === 0; next.disabled = current === images.length - 1;
@@ -158,8 +171,18 @@
         if (left < thumbs.scrollLeft) thumbs.scrollLeft = left;
         else if (left + thumb.offsetWidth > thumbs.scrollLeft + thumbs.clientWidth) thumbs.scrollLeft = left + thumb.offsetWidth - thumbs.clientWidth;
       }
-      caption.textContent = picture.alt; sourceLink(picture, credit); original.href = assetURL(picture.src);
-      status.textContent = `Фото ${current + 1} из ${images.length}: ${picture.alt}`;
+      // Clone trusted, already-parsed page DOM: preserve headings, material labels,
+      // explanatory text and source links without interpreting strings as HTML.
+      if (picture.captionNode) caption.replaceChildren(...picture.captionNode.cloneNode(true).childNodes);
+      else caption.textContent = picture.caption || picture.alt;
+      if (picture.drawing && !caption.querySelector('.case-material-type')) {
+        caption.prepend(make('span', 'case-material-type', picture.materialType || 'Проектная графика'));
+      }
+      sourceLink(picture, credit);
+      if (caption.querySelector('.photo-source')) credit.hidden = true;
+      original.href = assetURL(picture.src);
+      host.classList.toggle('bki-gallery--drawing', Boolean(picture.drawing));
+      status.textContent = `Изображение ${current + 1} из ${images.length}: ${picture.alt}`;
       loadNearby(); if (notify) onChange(current);
     }
     function select(index, smooth = true) {
@@ -221,6 +244,40 @@
     }) : null;
     resize?.observe(viewport); update(current);
     if (initialIndex) viewport.scrollLeft = current * viewport.clientWidth;
+    // Only extracted page images have anchor IDs. Card/modal galleries do not
+    // intercept page navigation or write history when the user changes slides.
+    const anchors = new Map(card ? [] : images.flatMap((picture, index) => picture.id ? [[picture.id, index]] : []));
+    if (anchors.size) {
+      const followAnchor = (hash, { focus = false, smooth = false } = {}) => {
+        const index = anchors.get(fragmentId(hash));
+        if (index === undefined || destroyed) return false;
+        // Complete horizontal selection before vertical scrolling/focus. This
+        // also updates captions, ARIA state and loading for the destination.
+        select(index, false);
+        const headerHeight = document.querySelector('.site-header')?.getBoundingClientRect().height || 0;
+        host.style.setProperty('--bki-gallery-scroll-margin', `${headerHeight + 16}px`);
+        if (focus) slides[index].open.focus({ preventScroll: true });
+        host.scrollIntoView({ block: 'start', inline: 'nearest', behavior: smooth && !reducedMotion.matches ? 'smooth' : 'instant' });
+        return true;
+      };
+      listen(window, 'hashchange', () => followAnchor(location.hash, { focus: true }));
+      listen(document, 'click', event => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target.closest?.('a[href]');
+        if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+        let url;
+        try { url = new URL(link.href, location.href); } catch { return; }
+        const pagePath = pathname => pathname.replace(/\/index\.html$/, '/');
+        if (url.origin !== location.origin || pagePath(url.pathname) !== pagePath(location.pathname) ||
+            url.search !== location.search || !anchors.has(fragmentId(url.hash))) return;
+        // pushState avoids the browser scrolling an inactive slide first. A
+        // repeated same-hash click still reselects it after a manual swipe.
+        try { if (url.hash !== location.hash) history.pushState(history.state, '', url.hash); } catch { return; }
+        event.preventDefault();
+        followAnchor(url.hash, { focus: true, smooth: true });
+      });
+      followAnchor(location.hash);
+    }
     return { select, step: delta => select(targetIndex + delta), getIndex: () => current,
       destroy() {
         destroyed = true; observer?.disconnect(); resize?.disconnect(); cancelAnimationFrame(raf); clearTimeout(scrollTimer);
@@ -260,8 +317,27 @@
       const images = figures.map(figure => {
         const img = figure.querySelector('img'), anchor = figure.querySelector('a'), source = figure.querySelector('.photo-source');
         if (!img || !anchor) return null;
-        return { src: anchor.getAttribute('href'), displaySrc: img.getAttribute('src'), srcSet: img.getAttribute('srcset'),
-          thumbnail: img.dataset.thumbnail, width: img.width, height: img.height, alt: img.alt,
+        const captionNode = figure.querySelector('figcaption');
+        const materialType = captionNode?.querySelector('.case-material-type')?.textContent.trim() || '';
+        // Keep the page DOM intact; the viewer needs separated plain-text blocks
+        // and renders the source credit in its own dedicated field.
+        const plainCaption = captionNode?.cloneNode(true);
+        plainCaption?.querySelectorAll('.photo-source').forEach(node => node.remove());
+        plainCaption?.querySelectorAll('h3, strong, .case-material-type').forEach(node => {
+          node.prepend(' '); node.append(' ');
+        });
+        const caption = plainCaption?.textContent.replace(/\s+/g, ' ').trim() || img.alt;
+        // Prefer an explicit type; older standalone drawing pages use a clear
+        // authored caption instead. Do not infer drawings from arbitrary prose.
+        const drawing = figure.dataset.drawing !== undefined ? figure.dataset.drawing === 'true' :
+          /^(?:черт[её]ж(?:\s|$)|проектная (?:графика|иллюстрация)|профиль и планы палуб)/i.test(materialType || caption);
+        return { id: figure.id, captionNode, caption, materialType, drawing,
+          captionTitle: captionNode?.querySelector('h3, strong')?.textContent.trim() || '',
+          src: anchor.getAttribute('href'), displaySrc: img.getAttribute('src'), srcSet: img.getAttribute('srcset'),
+          // Image.width/height can be zero or CSS-scaled for inactive lazy slides.
+          // Authored attributes describe the original image required by the viewer.
+          thumbnail: img.dataset.thumbnail, width: Number(img.getAttribute('width')) || img.naturalWidth,
+          height: Number(img.getAttribute('height')) || img.naturalHeight, alt: img.alt,
           credit: source?.textContent, sourceUrl: source?.getAttribute('href') };
       }).filter(Boolean);
       if (!images.length || !window.BKIViewer) return;

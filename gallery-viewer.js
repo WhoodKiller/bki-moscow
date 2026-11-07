@@ -85,6 +85,7 @@
       height: hasDimensions ? height : 1,
       hasDimensions,
       alt: text(picture.alt) || `Изображение ${index + 1}`,
+      caption: text(picture.caption),
       credit: text(picture.credit),
       source: sourceURL(picture.sourceUrl),
       drawing: Boolean(picture.drawing)
@@ -219,7 +220,7 @@
     const picture = session.images[session.index];
     session.counter.textContent = `${session.index + 1} / ${session.images.length}`;
     session.counter.setAttribute('aria-label', `Изображение ${session.index + 1} из ${session.images.length}`);
-    session.caption.textContent = picture.alt;
+    session.caption.textContent = picture.caption || picture.alt;
     session.credit.textContent = picture.credit;
     session.credit.hidden = !picture.credit || Boolean(picture.source);
     session.source.textContent = picture.credit || 'Источник изображения';
@@ -356,7 +357,10 @@
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
-      step(session, event.key === 'ArrowRight' ? 1 : -1);
+      const slide = session.ready ? session.pswp.currSlide : null;
+      if (slide && slide.currZoomLevel > slide.zoomLevels.fit) {
+        slide.panTo(slide.pan.x + (event.key === 'ArrowRight' ? -80 : 80), slide.pan.y);
+      } else step(session, event.key === 'ArrowRight' ? 1 : -1);
     } else if (event.key.toLowerCase() === 'z' && session.ready) {
       event.preventDefault();
       session.pswp.toggleZoom();
@@ -416,7 +420,7 @@
     description.append(caption);
     metadata.append(credit, source, original);
     footer.append(kind, description, metadata);
-    const help = element('p', 'bki-viewer__sr-only', 'Стрелки влево и вправо — переключить изображение. Z — изменить масштаб. Escape — закрыть. На сенсорном экране доступны смахивание и масштабирование двумя пальцами.');
+    const help = element('p', 'bki-viewer__sr-only', 'Без увеличения стрелки влево и вправо переключают изображения. При увеличении стрелки перемещают изображение; для смены кадра используйте кнопки «Предыдущее изображение» и «Следующее изображение». В описании стрелки вверх и вниз прокручивают текст. Z — изменить масштаб. Escape — закрыть. На сенсорном экране доступны смахивание и масштабирование двумя пальцами.');
     help.id = `${id}-help`;
     dialog.append(header, stage, footer, help);
 
